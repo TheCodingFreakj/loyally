@@ -1,0 +1,29 @@
+# FROM rabbitmq:3.8-management-alpine
+# RUN echo "Coping Config to ........"
+# COPY src/rabbitmq.conf /etc/rabbitmq/rabbitmq.conf 
+
+FROM node:lts-alpine as stage1
+WORKDIR /usr
+COPY package.json ./
+COPY tsconfig.json ./
+COPY ./src /usr/src
+RUN cd ..
+RUN ls -a
+RUN npm install 
+RUN npm run build
+
+## this is stage two , where the app actually runs
+FROM node:lts-alpine
+WORKDIR /usr
+COPY package.json ./
+# # RUN ls -a
+
+RUN npm install --only=production
+
+
+COPY --from=stage1 /usr/dist /usr/dist
+RUN ls -a
+RUN npm install pm2 -g
+EXPOSE 80
+CMD [ "pm2-runtime", "start", "npm", "--", "start" ]
+

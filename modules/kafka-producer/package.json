@@ -1,0 +1,24 @@
+{
+  "name": "kafka-producer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx tsc",
+    "start": "nodemon ./dist/index.js",
+    "clean": "rimraf dist .build .output"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "~20.1.7",
+    "dotenv": "~16.0.3",
+    "rimraf": "~5.0.0",
+    "typescript": "~5.0.4",
+    "kafkajs": "~2.2.4",
+    "nodemon": "~2.0.22",
+    "@types/kafkajs": "~1.9.0"
+  }
+}

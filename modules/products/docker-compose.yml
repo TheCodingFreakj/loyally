@@ -1,0 +1,10 @@
+version: "3.8"
+services:
+  userservice:
+    container_name: "productservice"
+    image: pallavi57/productservice
+    build:
+      context: .
+      dockerfile: ./Dockerfile.Products
+    ports:
+      - 6000:6000
