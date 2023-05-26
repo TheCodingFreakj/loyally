@@ -11,11 +11,37 @@ const logLevels = {
     debug: 4,
     trace: 5,
 };
+let alignColorsAndTime = winston.format.combine(winston.format.colorize({
+    all: true,
+}), winston.format.label({
+    label: "[LOGGER]",
+}), winston.format.timestamp({
+    format: "YY-MM-DD HH:mm:ss",
+}), winston.format.printf((debug) => ` ${debug.message}`
+// (debug: { label: any; timestamp: any; level: any; message: any }) =>
+//   ` ${debug.label}  ${debug.timestamp}  ${debug.level} : ${debug.message}`
+));
 exports.logger = winston.createLogger({
-    //   levels: logLevels,
-    level: process.env.LOG_LEVEL || "info",
-    format: combine(colorize({ all: true }), timestamp({
-        format: "YYYY-MM-DD hh:mm:ss.SSS A",
-    }), align(), printf((info) => `[${info.timestamp}] ${info.level}: ${info.message}`)),
-    transports: [new winston.transports.Console()],
+    level: "debug",
+    transports: [
+        new winston.transports.Console({
+            format: winston.format.combine(winston.format.colorize(), alignColorsAndTime),
+        }),
+    ],
 });
+// export const logger = winston.createLogger({
+// //   levels: logLevels,
+//   level: process.env.LOG_LEVEL || "info",
+//   format: combine(
+//     // colorize({ all: true }),
+//     timestamp({
+//       format: "YYYY-MM-DD hh:mm:ss.SSS A",
+//     }),
+//     align(),
+//     printf(
+//       (info: { timestamp: any; level: any; message: any }) =>
+//         `[${info.timestamp}] ${info.level}: ${info.message}`
+//     )
+//   ),
+//   transports: [new winston.transports.Console()],
+// });

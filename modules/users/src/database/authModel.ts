@@ -1,11 +1,16 @@
 import mongoose from "mongoose";
-
+const { v4: uuidv4 } = require("uuid");
 const Schema = mongoose.Schema;
 
 const UserSchema = new Schema({
-  email: {
+  user_id: {
     type: String,
     unique: true,
+    default: () => uuidv4(),
+    required: true,
+  },
+  email: {
+    type: String,
     required: true,
   },
   password: {
@@ -23,9 +28,14 @@ const UserSchema = new Schema({
 const User = mongoose.model("Users", UserSchema);
 
 const IndexedUserSchema = new Schema({
-  email: {
+  user_id: {
     type: String,
     unique: true,
+    default: () => uuidv4(),
+    required: true,
+  },
+  email: {
+    type: String,
     required: true,
   },
   password: {
@@ -43,3 +53,4 @@ IndexedUserSchema.index({ email: 1 });
 const IndexedUser = mongoose.model("IndexedUsers", IndexedUserSchema);
 
 export { IndexedUser, User };
+

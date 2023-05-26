@@ -10,14 +10,13 @@ const logger_1 = require("./logger/logger");
 const response_time_1 = __importDefault(require("response-time"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
-// import("express-rate-limit")
-// // import rateLimit from "express-rate-limit";
+const mongoose_1 = __importDefault(require("mongoose"));
+const chalk_1 = __importDefault(require("chalk"));
 const authRoute_1 = __importDefault(require("./authRoute"));
 const authModel_1 = require("./database/authModel");
 const worker_threads_1 = require("worker_threads");
 const path_1 = __importDefault(require("path"));
 dotenv_1.default.config();
-console.log("hitting");
 const app = (0, express_1.default)();
 (0, db_1.connMongodb)();
 app.use(express_1.default.json());
@@ -29,33 +28,45 @@ app.use((0, helmet_1.default)());
 //     max: 5, // 5 calls
 //   })
 // );
+mongoose_1.default.set("debug", false);
 app.use((0, response_time_1.default)());
 async function benchmark() {
     const query = { role: { $eq: "Admin" } };
-    console.time();
+    logger_1.logger.debug("LOGGING THE STATS");
+    logger_1.logger.info("Showing Query Status For User");
+    console.time(chalk_1.default.blue("query stats"));
     await authModel_1.User.find(query);
-    console.timeEnd();
-    console.time();
+    console.log(chalk_1.default.bgGreen("query stats"));
+    logger_1.logger.info(`Showing Query Status For User In lean Mode`);
     await authModel_1.User.find(query).lean();
-    console.timeEnd();
-    console.time();
+    console.timeEnd(chalk_1.default.grey("query stats"));
+    logger_1.logger.info("Showing Query Status For User");
+    console.time(chalk_1.default.blue("query stats"));
     await authModel_1.User.find(query).select({ email: 1, role: 1 });
-    console.timeEnd();
-    console.time();
+    console.timeEnd(chalk_1.default.redBright("query stats"));
+    logger_1.logger.info("Showing Query Status For User in Lean Mode");
+    console.time(chalk_1.default.blue("query stats"));
     await authModel_1.User.find(query).select({ email: 1, role: 1 }).lean();
-    console.timeEnd();
-    console.time();
+    console.timeEnd(chalk_1.default.bgYellow("query stats"));
+    logger_1.logger.info("Showing Query Status For Indexed User");
+    console.time(chalk_1.default.blue("query stats"));
     await authModel_1.IndexedUser.find(query);
-    console.timeEnd();
-    console.time();
+    console.timeEnd(chalk_1.default.gray("query stats"));
+    logger_1.logger.info("Showing Query Status For Indexed User In Lean mode");
+    console.time(chalk_1.default.blue("query stats"));
     await authModel_1.IndexedUser.find(query).lean();
-    console.timeEnd();
-    console.time();
+    console.timeEnd(chalk_1.default.bgBlack("query stats"));
+    logger_1.logger.info("Showing Query Status For Indexed User");
+    console.time(chalk_1.default.blue("query stats"));
     await authModel_1.IndexedUser.find(query).select({ email: 1, role: 1 });
-    console.timeEnd();
-    console.time();
+    console.timeEnd(chalk_1.default.bgGreenBright("query stats"));
+    logger_1.logger.info("Showing Query Status For Indexed User in Lean Mode");
+    console.time(chalk_1.default.blue("query stats"));
     await authModel_1.IndexedUser.find(query).select({ email: 1, role: 1 }).lean();
-    console.timeEnd();
+    console.timeEnd(chalk_1.default.bgRedBright("query stats"));
+    const i = await authModel_1.IndexedUser.find().count();
+    console.log("Total Records Inserted: ");
+    console.log(i);
 }
 const THREAD_COUNT = 4;
 function createWorker() {
@@ -70,31 +81,42 @@ function createWorker() {
         worker.on("error", (msg) => {
             return reject(`An error ocurred: ${msg}`);
         });
-        worker.on("exit", (code) => {
-            if (code !== 0)
-                return reject(new Error(`Stopped the Worker Thread with the exit code: ${code}`));
+    });
+}
+function dbworker(thread_results) {
+    const worker_path = path_1.default.join(__dirname, "workers", "dbinsert-worker");
+    return new Promise(function (resolve, reject) {
+        const dbWorker = new worker_threads_1.Worker(worker_path, {
+            workerData: { thread_results: thread_results },
+        });
+        dbWorker.on("message", (data) => {
+            return resolve(data);
+        });
+        dbWorker.on("error", (msg) => {
+            return reject(`This is an error while inserting in DB: ${msg}`);
         });
     });
 }
 app.use("/api", authRoute_1.default);
 app.get("/insert-data", async (req, res) => {
-    const workerPromises = [];
-    for (let i = 0; i < THREAD_COUNT; i++) {
-        workerPromises.push(createWorker());
-    }
-    const thread_results = await Promise.all(workerPromises);
-    if (thread_results) {
-        for (const iterator of thread_results) {
-            try {
-                authModel_1.User.insertMany(JSON.parse(iterator));
-                authModel_1.IndexedUser.insertMany(JSON.parse(iterator));
-                benchmark();
-            }
-            catch (err) {
-                console.log(err);
-            }
-            // benchmark();
+    try {
+        const workerPromises = [];
+        const dbworkerPromises = [];
+        for (let i = 0; i < THREAD_COUNT; i++) {
+            workerPromises.push(createWorker());
         }
+        const thread_results = await Promise.all(workerPromises);
+        // IndexedUser.deleteMany({});
+        // User.deleteMany({});
+        for (let i = 0; i < THREAD_COUNT; i++) {
+            dbworkerPromises.push(dbworker(thread_results));
+        }
+        const thread_messages = await Promise.all(dbworkerPromises);
+        console.log(thread_messages);
+        // benchmark();
+    }
+    catch (err) {
+        console.log("This is the error from insert db worker", err);
     }
 });
 app.get("/", (req, res) => {
